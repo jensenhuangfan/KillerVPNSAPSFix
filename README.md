@@ -1,6 +1,6 @@
 # KillerSAPSFix
 
-**Fix Intel Killer Performance Suite SAPS VPN Lock & False Band Name Warnings**
+**A fix for the Intel Killer Performance Suite SAPS VPN Lock & Band Name Warnings**
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
@@ -8,215 +8,78 @@
 
 ---
 
-## The Problem
+## What is this?
 
-The **Intel Killer Performance Suite** ships with two frustrating bugs that have no official fix:
+The Intel Killer Performance Suite has a couple of annoying bugs that I decided to fix since there's no official patch for them. 
 
-### 🔒 Bug 1 — VPN Lock (SAPS Disabled)
+### 1. The VPN Lock Bug (SAPS Disabled)
+The Killer Smart AP Selection Service (KAPSService) constantly scans your network adapters. If it spots a virtual network adapter like ZeroTier, Tailscale, WireGuard, or even a Hyper-V switch, it panics and disables SAPS (Smart Access Point Selection) entirely. It does this by writing `VPNInhibited=1` to your registry. There is no setting in the UI to turn this off. 
 
-The **KAPSService** (Killer Smart AP Selection Service) scans for virtual network adapters — ZeroTier, Tailscale, WireGuard, Hyper-V switches, etc. — and when it finds one, it disables **SAPS** (Smart Access Point Selection) by writing `VPNInhibited=1` to the registry. There is **no UI toggle** to override this.
+This means your Wi-Fi experience is degraded just because you have a virtual adapter installed, even if you aren't using a VPN to route your traffic.
 
-Even though SAPS has nothing to do with VPN routing, the Killer suite locks it out entirely if *any* virtual adapter is present. This degrades your Wi-Fi experience for no reason.
+### 2. The False Band Name Warning
+The Killer app loves to spam this warning:
+> "Your 2.4 GHz and 5 GHz WIFI bands have different names"
 
-**Registry key:**
-```
-HKLM\SOFTWARE\RivetNetworks\KAPS\{ADAPTER_GUID}\VPNInhibited = 1
-```
-
-### ⚠️ Bug 2 — False Band Name Warning
-
-The Killer UI constantly shows:
-
-> *"Your 2.4 GHz and 5 GHz WIFI bands have different names"*
-
-…even when **all bands share the same SSID**. This happens because the router's 2.4 GHz radio uses a different MAC/BSSID prefix than the 5/6 GHz radios, and the Killer software uses BSSID grouping (not SSID comparison) to determine band names.
+The funny part is, it does this even when your bands have the exact same name. The software groups bands by BSSID (MAC address prefixes) instead of looking at the actual SSID string. If your router uses a different MAC prefix for its 2.4 GHz radio than its 5/6 GHz radios, the Killer app gets confused and assumes they are different networks.
 
 ---
 
-## Features
+## What the fix does
 
-- ✅ **Auto-detects** your Killer adapter GUID — nothing to hardcode
-- ✅ **Overrides VPNInhibited** on startup and monitors for re-lock every few seconds
-- ✅ **Suppresses false band-name warnings** by normalizing AP2ISPCrossInfo entries
-- ✅ **Runs silently** as a Scheduled Task under SYSTEM — no console window
-- ✅ **Survives reboots** — the task is registered with an At Startup trigger
-- ✅ **Configurable** check interval, toggle each fix independently
-- ✅ **Clean uninstall** restores original Killer behavior
-- ✅ **Structured logging** for troubleshooting
+- Auto-detects your Killer adapter GUID so you don't have to configure anything manually.
+- Overrides the VPN lock on startup and monitors the registry to force it open if KAPSService tries to lock it again.
+- Suppresses the false band-name warnings by fixing the AP2ISPCrossInfo entries in the registry.
+- Runs silently in the background as a Scheduled Task.
+- Has a unified setup menu so you can easily install, uninstall, or configure it.
 
 ---
 
 ## Requirements
 
-| Requirement | Details |
-|---|---|
-| **OS** | Windows 10 or Windows 11 |
-| **Adapter** | Intel Killer Wi-Fi adapter with Killer Performance Suite installed |
-| **PowerShell** | 5.1 or later (built into Windows 10/11) |
-| **Privileges** | Administrator (for install/uninstall) |
+- Windows 10 or Windows 11
+- An Intel Killer Wi-Fi adapter with the Killer Performance Suite installed
+- PowerShell 5.1 or newer
+- Administrator rights to run the setup
 
 ---
 
-## Quick Install
+## How to use it
 
-Open **PowerShell as Administrator** and run:
+Everything is handled through a single script now. 
+
+1. Clone or download this repository to your computer.
+2. Open **PowerShell as Administrator**.
+3. Navigate to the folder where you downloaded the files.
+4. Run the setup script:
 
 ```powershell
 Set-ExecutionPolicy Bypass -Scope Process -Force
-.\install.ps1
+.\setup.ps1
 ```
 
-That's it. The fix is now running and will persist across reboots.
+A menu will pop up allowing you to:
+- **Install**: Copies the files to `C:\ProgramData\KillerSAPSFix` and sets up the background task.
+- **Uninstall**: Completely removes the scheduled tasks, deletes the files, and restores your registry to the default Killer behavior.
+- **Configure**: Lets you tweak things like the polling interval, or turn specific fixes on and off.
 
 ---
 
-## Manual Install
+## How It Works behind the scenes
 
-If you prefer to understand each step:
-
-1. **Clone or download** this repository
-2. **Open PowerShell as Administrator**
-3. **Navigate** to the repository folder
-4. **Run the installer:**
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-.\install.ps1
-```
-
-The installer will:
-- Copy `KillerSAPSFix.ps1` and `config.json` to `C:\ProgramData\KillerSAPSFix\`
-- Register a Scheduled Task named `KillerSAPSFix`
-- Start the task immediately
-
----
-
-## Configuration
-
-Edit `C:\ProgramData\KillerSAPSFix\config.json` after installation (or `config.json` in this repo before installing):
-
-```json
-{
-  "CheckIntervalSeconds": 5,
-  "OverrideVPNLock": true,
-  "SuppressBandNameWarning": true,
-  "LogEnabled": true,
-  "LogPath": "KillerSAPSFix.log"
-}
-```
-
-| Option | Type | Default | Description |
-|---|---|---|---|
-| `CheckIntervalSeconds` | int | `5` | How often (in seconds) to check if KAPSService has re-locked SAPS |
-| `OverrideVPNLock` | bool | `true` | Enable/disable the VPNInhibited override |
-| `SuppressBandNameWarning` | bool | `true` | Enable/disable the band-name warning suppression |
-| `LogEnabled` | bool | `true` | Enable/disable logging |
-| `LogPath` | string | `KillerSAPSFix.log` | Log file path (relative to install dir, or absolute) |
-
-> **Note:** After editing the config, restart the Scheduled Task for changes to take effect:
-> ```powershell
-> Stop-ScheduledTask -TaskName KillerSAPSFix
-> Start-ScheduledTask -TaskName KillerSAPSFix
-> ```
-
----
-
-## Uninstall
-
-Open **PowerShell as Administrator** and run:
-
-```powershell
-.\uninstall.ps1
-```
-
-This will:
-- Stop and remove the `KillerSAPSFix` Scheduled Task
-- Remove the legacy `KillerVPNOverride` task if it exists
-- Delete `C:\ProgramData\KillerSAPSFix\`
-- Restore `VPNInhibited=1` (original Killer behavior)
-
----
-
-## How It Works
-
-```
-┌──────────────────────────────────────────────────────┐
-│                    KillerSAPSFix                     │
-│                                                      │
-│  1. Auto-detect adapter GUIDs under                  │
-│     HKLM\SOFTWARE\RivetNetworks\KAPS\{...}           │
-│                                                      │
-│  2. Stop KAPSService                                 │
-│                                                      │
-│  3. Patch registry:                                  │
-│     • VPNInhibited = 0                               │
-│     • VPNFound = 0 (per-adapter + global)            │
-│     • StatusMessage = ""                             │
-│     • Normalize AP2ISPCrossInfo SSIDs                │
-│                                                      │
-│  4. Restart KAPSService                              │
-│                                                      │
-│  5. Monitor loop (every N seconds):                  │
-│     • If VPNInhibited flips back to 1 → re-patch     │
-│     • Periodically re-normalize band info            │
-│     • Re-scan for new adapter GUIDs every 5 min      │
-└──────────────────────────────────────────────────────┘
-```
-
-### Registry Keys Modified
-
-| Key | Type | Value Set | Purpose |
-|---|---|---|---|
-| `KAPS\{GUID}\VPNInhibited` | DWORD | `0` | Unlocks SAPS |
-| `KAPS\{GUID}\VPNFound` | DWORD | `0` | Clears VPN detection flag |
-| `KAPS\{GUID}\StatusMessage` | REG_SZ | `""` | Clears status message |
-| `KAPS\VPNFound` | DWORD | `0` | Clears global VPN flag |
-| `KAPS\{GUID}\AP2ISPCrossInfo\*\SSID` | REG_SZ | *(normalized)* | Fixes band name mismatch |
+1. It finds your adapter GUIDs under `HKLM\SOFTWARE\RivetNetworks\KAPS`.
+2. It temporarily stops the KAPSService.
+3. It patches the registry (sets `VPNInhibited = 0`, `VPNFound = 0`, clears `StatusMessage`, and normalizes your SSIDs).
+4. It restarts KAPSService.
+5. It runs a lightweight background loop that watches the registry. If KAPSService flips the switch back to 1, the script immediately flips it back to 0. It also re-scans for new adapters every 5 minutes just in case.
 
 ---
 
 ## Troubleshooting
 
-### The fix doesn't seem to be running
-
-```powershell
-# Check task status
-Get-ScheduledTask -TaskName KillerSAPSFix | Format-List State
-
-# Check the log
-Get-Content C:\ProgramData\KillerSAPSFix\KillerSAPSFix.log -Tail 20
-
-# Manually start the task
-Start-ScheduledTask -TaskName KillerSAPSFix
-```
-
-### SAPS still shows as disabled
-
-1. Check the log file for errors
-2. Verify the KAPS registry path exists:
-   ```powershell
-   Get-ChildItem 'HKLM:\SOFTWARE\RivetNetworks\KAPS'
-   ```
-3. Make sure the Killer Performance Suite is installed and KAPSService exists:
-   ```powershell
-   Get-Service KAPSService
-   ```
-
-### The band name warning persists
-
-This fix normalizes the `AP2ISPCrossInfo` registry entries, but the Killer UI may cache the warning. Try:
-1. Close and reopen the Killer Control Center
-2. Disconnect and reconnect to Wi-Fi
-3. Check the log for "Normalised SSID" entries
-
-### I want to run the script manually for testing
-
-```powershell
-# Run in the foreground (requires admin)
-powershell -ExecutionPolicy Bypass -File .\KillerSAPSFix.ps1
-```
-
-Press `Ctrl+C` to stop.
+- **The script isn't running:** Open PowerShell as admin and run `Get-ScheduledTask -TaskName KillerSAPSFix` to see if the task is registered and running.
+- **Still seeing the band name warning:** Sometimes the Killer Control Center caches the warning. Try closing the app entirely from the system tray and reopening it, or disconnect and reconnect to your Wi-Fi.
+- **Logs:** You can check the logs at `C:\ProgramData\KillerSAPSFix\KillerSAPSFix.log` to see what the script is doing in real-time.
 
 ---
 

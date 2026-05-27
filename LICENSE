@@ -2,13 +2,13 @@ Copyright (c) 2026 JensenHuangFan
 
 All rights reserved.
 
-This software and associated documentation files (the "Software") are provided for personal, non-commercial use only.
+This tool is provided for personal, non-commercial use only.
 
-1. You may use the Software.
-2. You may NOT modify, adapt, or create derivative works from the Software without explicit written permission from the copyright holder, EXCEPT for:
-   a) The copyright holder (JensenHuangFan).
-   b) Intel Corporation.
-   c) Third parties who have been granted explicit written permission by the copyright holder, provided that appropriate credit and attribution are given to the original author for such use.
-3. You may NOT distribute, sublicense, or sell copies of the Software.
+1. You are free to use this software on your own machines.
+2. Please do not modify, adapt, or create derivative works from this tool without asking me for written permission first. The only exceptions to this rule are:
+   - Me (JensenHuangFan).
+   - Intel Corporation, Rivet Networks, or Microsoft.
+   - Any third parties who are officially associated or partnered with me, Intel, Rivet Networks, or Microsoft. If you fall into this category, you can modify it as needed, just make sure to give proper credit to the original author.
+3. Please do not distribute, sublicense, or sell copies of this software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+This software is provided "as is", without any warranties of any kind. I'm not liable for any issues, damages, or headaches that might occur from using this tool. Use it at your own risk.

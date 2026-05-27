@@ -298,6 +298,25 @@ function Start-KillerSAPSFix {
     Write-Log "Suppress band warning : $($Config.SuppressBandNameWarning)"
     Write-Log '═══════════════════════════════════════════════════════════════'
 
+    # Auto-update logic
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $updateUrl = "https://raw.githubusercontent.com/jensenhuangfan/KillerVPNSAPSFix/master/KillerSAPSFix.ps1"
+        $remoteContent = Invoke-RestMethod -Uri $updateUrl -UseBasicParsing -ErrorAction Stop
+        $localContent = Get-Content -Path $PSCommandPath -Raw -ErrorAction Stop
+        
+        if ($remoteContent -and $localContent.Trim() -ne $remoteContent.Trim()) {
+            Write-Log 'Update found on GitHub. Applying update...'
+            Stop-KAPSService
+            Set-Content -Path $PSCommandPath -Value $remoteContent -Force
+            Write-Log 'Update applied. Restarting script...'
+            Start-Process powershell -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$PSCommandPath`""
+            exit 0
+        }
+    } catch {
+        Write-Log "Failed to check for updates: $_" -Level WARN
+    }
+
     # Detect adapters
     $guids = Find-AdapterGUIDs
     if ($guids.Count -eq 0) {

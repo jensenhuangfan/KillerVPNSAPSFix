@@ -30,17 +30,19 @@ function Test-IsAdmin {
 }
 
 if (-not (Test-IsAdmin)) {
-    Write-Host ''
-    Write-Host '  ERROR: This script must be run as Administrator.' -ForegroundColor Red
-    Write-Host '  Right-click PowerShell and choose "Run as administrator".' -ForegroundColor Yellow
-    Write-Host ''
-    exit 1
+    Write-Host '  Elevating to Administrator...' -ForegroundColor Yellow
+    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit 0
 }
 
 # ── Functions ────────────────────────────────────────────────────────────────
 
 function Install-Fix {
-    Write-Host "`n  [1/3] Copying files..." -ForegroundColor White
+    Write-Host "`n  [1/4] Stopping Killer Services..." -ForegroundColor White
+    Stop-Service -Name KAPSService -Force -ErrorAction SilentlyContinue
+    Stop-Process -Name KAPS -Force -ErrorAction SilentlyContinue
+
+    Write-Host "`n  [2/4] Copying files..." -ForegroundColor White
     if (-not (Test-Path $InstallDir)) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
         Write-Host "        Created $InstallDir" -ForegroundColor DarkGray
@@ -59,7 +61,7 @@ function Install-Fix {
     }
     Write-Host '        Done.' -ForegroundColor Green
 
-    Write-Host "`n  [2/3] Registering Scheduled Task..." -ForegroundColor White
+    Write-Host "`n  [3/4] Registering Scheduled Task..." -ForegroundColor White
     $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     if ($existingTask) {
         Write-Host "        Removing existing task '$TaskName'..." -ForegroundColor DarkGray
@@ -83,7 +85,7 @@ function Install-Fix {
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Fix Intel Killer Performance Suite SAPS VPN Lock and False Band Name Warnings.' -Force | Out-Null
     Write-Host "        Task '$TaskName' registered." -ForegroundColor Green
 
-    Write-Host "`n  [3/3] Starting task..." -ForegroundColor White
+    Write-Host "`n  [4/4] Starting task..." -ForegroundColor White
     Start-ScheduledTask -TaskName $TaskName
     Start-Sleep -Seconds 2
 
@@ -98,7 +100,11 @@ function Install-Fix {
 }
 
 function Uninstall-Fix {
-    Write-Host "`n  [1/3] Removing Scheduled Tasks..." -ForegroundColor White
+    Write-Host "`n  [1/4] Stopping Killer Services..." -ForegroundColor White
+    Stop-Service -Name KAPSService -Force -ErrorAction SilentlyContinue
+    Stop-Process -Name KAPS -Force -ErrorAction SilentlyContinue
+
+    Write-Host "`n  [2/4] Removing Scheduled Tasks..." -ForegroundColor White
     foreach ($name in @($TaskName, $LegacyTask)) {
         $task = Get-ScheduledTask -TaskName $name -ErrorAction SilentlyContinue
         if ($task) {
@@ -113,7 +119,7 @@ function Uninstall-Fix {
     }
     Write-Host '        Done.' -ForegroundColor Green
 
-    Write-Host "`n  [2/3] Removing installed files..." -ForegroundColor White
+    Write-Host "`n  [3/4] Removing installed files..." -ForegroundColor White
     if (Test-Path $InstallDir) {
         try {
             Remove-Item -Path $InstallDir -Recurse -Force -ErrorAction Stop
@@ -124,7 +130,7 @@ function Uninstall-Fix {
     }
     Write-Host '        Done.' -ForegroundColor Green
 
-    Write-Host "`n  [3/3] Restoring original registry values..." -ForegroundColor White
+    Write-Host "`n  [4/4] Restoring original registry values..." -ForegroundColor White
     $guidPattern = '^\{[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}\}$'
     if (Test-Path $KAPSRoot) {
         try {
@@ -143,6 +149,9 @@ function Uninstall-Fix {
             Write-Host "        WARNING: Could not fully restore registry: $_" -ForegroundColor Yellow
         }
     }
+    
+    Write-Host "        Starting KAPSService..." -ForegroundColor DarkGray
+    Start-Service -Name KAPSService -ErrorAction SilentlyContinue
     Write-Host '        Done.' -ForegroundColor Green
 
     Write-Host "`n  Uninstall complete! The Killer suite has been restored to default behavior.`n" -ForegroundColor Green
@@ -170,16 +179,18 @@ function Configure-Fix {
     Write-Host "  2. Override VPN Lock        : $($config.OverrideVPNLock)"
     Write-Host "  3. Suppress Band Warnings   : $($config.SuppressBandNameWarning)"
     Write-Host "  4. Enable Logging           : $($config.LogEnabled)"
-    Write-Host "  5. Go back"
+    Write-Host "  5. Log Path                 : $($config.LogPath)"
+    Write-Host "  6. Go back"
     
-    $choice = Read-Host "`n  Select an option to change (1-5)"
+    $choice = Read-Host "`n  Select an option to change (1-6)"
     
     switch ($choice) {
         '1' { $config.CheckIntervalSeconds = [int](Read-Host "  Enter new check interval (e.g., 5)") }
         '2' { $config.OverrideVPNLock = -not $config.OverrideVPNLock; Write-Host "  Toggled OverrideVPNLock to $($config.OverrideVPNLock)" }
         '3' { $config.SuppressBandNameWarning = -not $config.SuppressBandNameWarning; Write-Host "  Toggled SuppressBandNameWarning to $($config.SuppressBandNameWarning)" }
         '4' { $config.LogEnabled = -not $config.LogEnabled; Write-Host "  Toggled LogEnabled to $($config.LogEnabled)" }
-        '5' { return }
+        '5' { $config.LogPath = Read-Host "  Enter new log path (absolute or relative to script)" }
+        '6' { return }
         default { Write-Host "  Invalid choice." -ForegroundColor Red; return }
     }
 

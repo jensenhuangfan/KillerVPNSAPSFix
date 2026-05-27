@@ -38,11 +38,35 @@ if (-not (Test-IsAdmin)) {
 # ── Functions ────────────────────────────────────────────────────────────────
 
 function Install-Fix {
-    Write-Host "`n  [1/4] Stopping Killer Services..." -ForegroundColor White
+    Write-Host "`n  [1/5] Checking for updates from GitHub..." -ForegroundColor White
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        $repoUrl = "https://raw.githubusercontent.com/jensenhuangfan/KillerVPNSAPSFix/master"
+        
+        $remoteFix = Invoke-RestMethod -Uri "$repoUrl/KillerSAPSFix.ps1" -UseBasicParsing -ErrorAction Stop
+        $localFixPath = Join-Path $ScriptDir 'KillerSAPSFix.ps1'
+        if (-not (Test-Path $localFixPath) -or (Get-Content $localFixPath -Raw).Trim() -ne $remoteFix.Trim()) {
+            Set-Content -Path $localFixPath -Value $remoteFix -Force
+            Write-Host "        Updated KillerSAPSFix.ps1" -ForegroundColor DarkGray
+        }
+
+        $remoteSetup = Invoke-RestMethod -Uri "$repoUrl/setup.ps1" -UseBasicParsing -ErrorAction Stop
+        $localSetupPath = Join-Path $ScriptDir 'setup.ps1'
+        if (-not (Test-Path $localSetupPath) -or (Get-Content $localSetupPath -Raw).Trim() -ne $remoteSetup.Trim()) {
+            Set-Content -Path $localSetupPath -Value $remoteSetup -Force
+            Write-Host "        Updated setup.ps1" -ForegroundColor DarkGray
+        }
+        
+        Write-Host "        Done." -ForegroundColor Green
+    } catch {
+        Write-Host "        WARNING: Could not check for updates. Proceeding with local files. $_" -ForegroundColor Yellow
+    }
+
+    Write-Host "`n  [2/5] Stopping Killer Services..." -ForegroundColor White
     Stop-Service -Name KAPSService -Force -ErrorAction SilentlyContinue
     Stop-Process -Name KAPS -Force -ErrorAction SilentlyContinue
 
-    Write-Host "`n  [2/4] Copying files..." -ForegroundColor White
+    Write-Host "`n  [3/5] Copying files..." -ForegroundColor White
     if (-not (Test-Path $InstallDir)) {
         New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
         Write-Host "        Created $InstallDir" -ForegroundColor DarkGray
@@ -61,7 +85,7 @@ function Install-Fix {
     }
     Write-Host '        Done.' -ForegroundColor Green
 
-    Write-Host "`n  [3/4] Registering Scheduled Task..." -ForegroundColor White
+    Write-Host "`n  [4/5] Registering Scheduled Task..." -ForegroundColor White
     $existingTask = Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue
     if ($existingTask) {
         Write-Host "        Removing existing task '$TaskName'..." -ForegroundColor DarkGray
@@ -85,7 +109,7 @@ function Install-Fix {
     Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Fix Intel Killer Performance Suite SAPS VPN Lock.' -Force | Out-Null
     Write-Host "        Task '$TaskName' registered." -ForegroundColor Green
 
-    Write-Host "`n  [4/4] Starting task..." -ForegroundColor White
+    Write-Host "`n  [5/5] Starting task..." -ForegroundColor White
     Start-ScheduledTask -TaskName $TaskName
     Start-Sleep -Seconds 2
 

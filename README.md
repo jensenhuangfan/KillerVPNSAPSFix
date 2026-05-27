@@ -4,7 +4,7 @@
 
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)
 ![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
+![License](https://img.shields.io/badge/License-Custom-green)
 
 ---
 
@@ -222,4 +222,4 @@ Press `Ctrl+C` to stop.
 
 ## License
 
-[MIT](LICENSE) — Copyright © 2026 JensenHuangFan
+[Custom License](LICENSE) — Copyright © 2026 JensenHuangFan

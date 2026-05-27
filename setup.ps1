@@ -44,15 +44,19 @@ function Install-Fix {
         $repoUrl = "https://raw.githubusercontent.com/jensenhuangfan/KillerVPNSAPSFix/master"
         
         $remoteFix = Invoke-RestMethod -Uri "$repoUrl/KillerSAPSFix.ps1" -UseBasicParsing -ErrorAction Stop
+        $remoteFixClean = $remoteFix -replace "`r`n", "`n"
         $localFixPath = Join-Path $ScriptDir 'KillerSAPSFix.ps1'
-        if (-not (Test-Path $localFixPath) -or (Get-Content $localFixPath -Raw).Trim() -ne $remoteFix.Trim()) {
+        $localFixContent = if (Test-Path $localFixPath) { (Get-Content $localFixPath -Raw) -replace "`r`n", "`n" } else { "" }
+        if ($localFixContent.Trim() -ne $remoteFixClean.Trim()) {
             Set-Content -Path $localFixPath -Value $remoteFix -Force
             Write-Host "        Updated KillerSAPSFix.ps1" -ForegroundColor DarkGray
         }
 
         $remoteSetup = Invoke-RestMethod -Uri "$repoUrl/setup.ps1" -UseBasicParsing -ErrorAction Stop
+        $remoteSetupClean = $remoteSetup -replace "`r`n", "`n"
         $localSetupPath = Join-Path $ScriptDir 'setup.ps1'
-        if (-not (Test-Path $localSetupPath) -or (Get-Content $localSetupPath -Raw).Trim() -ne $remoteSetup.Trim()) {
+        $localSetupContent = if (Test-Path $localSetupPath) { (Get-Content $localSetupPath -Raw) -replace "`r`n", "`n" } else { "" }
+        if ($localSetupContent.Trim() -ne $remoteSetupClean.Trim()) {
             Set-Content -Path $localSetupPath -Value $remoteSetup -Force
             Write-Host "        Updated setup.ps1" -ForegroundColor DarkGray
         }

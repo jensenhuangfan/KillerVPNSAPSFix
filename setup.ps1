@@ -82,7 +82,7 @@ function Install-Fix {
     $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable -Hidden
 
-    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Fix Intel Killer Performance Suite SAPS VPN Lock and False Band Name Warnings.' -Force | Out-Null
+    Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description 'Fix Intel Killer Performance Suite SAPS VPN Lock.' -Force | Out-Null
     Write-Host "        Task '$TaskName' registered." -ForegroundColor Green
 
     Write-Host "`n  [4/4] Starting task..." -ForegroundColor White
@@ -177,20 +177,18 @@ function Configure-Fix {
     Write-Host "  Current settings:"
     Write-Host "  1. Check Interval (seconds) : $($config.CheckIntervalSeconds)"
     Write-Host "  2. Override VPN Lock        : $($config.OverrideVPNLock)"
-    Write-Host "  3. Suppress Band Warnings   : $($config.SuppressBandNameWarning)"
-    Write-Host "  4. Enable Logging           : $($config.LogEnabled)"
-    Write-Host "  5. Log Path                 : $($config.LogPath)"
-    Write-Host "  6. Go back"
+    Write-Host "  3. Enable Logging           : $($config.LogEnabled)"
+    Write-Host "  4. Log Path                 : $($config.LogPath)"
+    Write-Host "  5. Go back"
     
-    $choice = Read-Host "`n  Select an option to change (1-6)"
+    $choice = Read-Host "`n  Select an option to change (1-5)"
     
     switch ($choice) {
         '1' { $config.CheckIntervalSeconds = [int](Read-Host "  Enter new check interval (e.g., 5)") }
         '2' { $config.OverrideVPNLock = -not $config.OverrideVPNLock; Write-Host "  Toggled OverrideVPNLock to $($config.OverrideVPNLock)" }
-        '3' { $config.SuppressBandNameWarning = -not $config.SuppressBandNameWarning; Write-Host "  Toggled SuppressBandNameWarning to $($config.SuppressBandNameWarning)" }
-        '4' { $config.LogEnabled = -not $config.LogEnabled; Write-Host "  Toggled LogEnabled to $($config.LogEnabled)" }
-        '5' { $config.LogPath = Read-Host "  Enter new log path (absolute or relative to script)" }
-        '6' { return }
+        '3' { $config.LogEnabled = -not $config.LogEnabled; Write-Host "  Toggled LogEnabled to $($config.LogEnabled)" }
+        '4' { $config.LogPath = Read-Host "  Enter new log path (absolute or relative to script)" }
+        '5' { return }
         default { Write-Host "  Invalid choice." -ForegroundColor Red; return }
     }
 

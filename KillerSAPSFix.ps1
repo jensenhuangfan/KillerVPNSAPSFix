@@ -8,8 +8,7 @@
     VPNInhibited registry flag that KAPSService sets when it detects virtual network
     adapters (e.g. ZeroTier, Tailscale, WireGuard).
 
-    Also suppresses the false "Your 2.4 GHz and 5 GHz WIFI bands have different names"
-    warning caused by MAC prefix mismatches between radios on the same AP.
+    adapters (e.g. ZeroTier, Tailscale, WireGuard).
 
 .NOTES
     Author : JensenHuangFan
@@ -26,7 +25,6 @@ function Read-Config {
     $defaults = @{
         CheckIntervalSeconds    = 5
         OverrideVPNLock         = $true
-        SuppressBandNameWarning = $true
         LogEnabled              = $true
         LogPath                 = 'KillerSAPSFix.log'
     }
@@ -198,60 +196,7 @@ function Invoke-VPNLockOverride {
     }
 }
 
-function Invoke-BandNameWarningSuppression {
-    <#
-    .SYNOPSIS
-        Ensures that AP2ISPCrossInfo entries are consistent so the Killer UI
-        does not flag a false band-name mismatch warning.
 
-        The Killer UI compares SSIDs discovered per-band via AP2ISPCrossInfo
-        subkeys. If the 2.4 GHz radio has a different BSSID prefix the UI
-        sometimes fails to correlate them and shows the warning. We normalise
-        the entries so they agree.
-    #>
-    param([string[]]$GUIDs)
-
-    foreach ($guid in $GUIDs) {
-        $crossInfoPath = Join-Path $KAPSRoot "$guid\AP2ISPCrossInfo"
-
-        if (-not (Test-Path $crossInfoPath)) {
-            continue
-        }
-
-        try {
-            $entries = Get-ChildItem -Path $crossInfoPath -ErrorAction SilentlyContinue
-            if (-not $entries -or $entries.Count -eq 0) { continue }
-
-            # Collect SSIDs from all band entries
-            $ssids = @{}
-            foreach ($entry in $entries) {
-                $ssid = (Get-ItemProperty -Path $entry.PSPath -Name 'SSID' -ErrorAction SilentlyContinue).SSID
-                if ($ssid) {
-                    $ssids[$entry.PSChildName] = $ssid
-                }
-            }
-
-            # If all SSIDs already match, nothing to do
-            $uniqueSSIDs = $ssids.Values | Sort-Object -Unique
-            if ($uniqueSSIDs.Count -le 1) { continue }
-
-            # Find the most common SSID (the "correct" one)
-            $grouped = $ssids.Values | Group-Object | Sort-Object Count -Descending
-            $canonicalSSID = $grouped[0].Name
-
-            # Overwrite outliers
-            foreach ($key in $ssids.Keys) {
-                if ($ssids[$key] -ne $canonicalSSID) {
-                    $entryPath = Join-Path $crossInfoPath $key
-                    Set-RegistryString -Path $entryPath -Name 'SSID' -Value $canonicalSSID | Out-Null
-                    Write-Log "Normalised SSID for band entry '$key' to '$canonicalSSID'"
-                }
-            }
-        } catch {
-            Write-Log "Error suppressing band name warning for $guid : $_" -Level WARN
-        }
-    }
-}
 
 # ── Service management ───────────────────────────────────────────────────────
 function Stop-KAPSService {
@@ -295,7 +240,6 @@ function Start-KillerSAPSFix {
     Write-Log "Log file         : $LogFile"
     Write-Log "Check interval   : $($Config.CheckIntervalSeconds)s"
     Write-Log "Override VPN lock : $($Config.OverrideVPNLock)"
-    Write-Log "Suppress band warning : $($Config.SuppressBandNameWarning)"
     Write-Log '═══════════════════════════════════════════════════════════════'
 
     # Auto-update logic
@@ -329,10 +273,6 @@ function Start-KillerSAPSFix {
 
         if ($Config.OverrideVPNLock) {
             Invoke-VPNLockOverride -GUIDs $guids
-        }
-
-        if ($Config.SuppressBandNameWarning) {
-            Invoke-BandNameWarningSuppression -GUIDs $guids
         }
 
         Start-KAPSService
@@ -384,11 +324,6 @@ function Start-KillerSAPSFix {
                 Invoke-VPNLockOverride -GUIDs $guids -Silent
                 Write-Log "VPN lock override re-applied (no service restart)."
             }
-        }
-
-        # Periodically re-suppress band name warning (every 60 loops ≈ 5 min at 5s interval)
-        if ($Config.SuppressBandNameWarning -and ($loopCount % 60 -eq 0)) {
-            Invoke-BandNameWarningSuppression -GUIDs $guids
         }
     }
 }

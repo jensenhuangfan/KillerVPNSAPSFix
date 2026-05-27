@@ -1,7 +1,6 @@
 {
   "CheckIntervalSeconds": 5,
   "OverrideVPNLock": true,
-  "SuppressBandNameWarning": true,
   "LogEnabled": true,
   "LogPath": "KillerSAPSFix.log"
 }

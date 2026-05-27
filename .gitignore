@@ -1,0 +1,19 @@
+# Logs
+*.log
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# PowerShell
+*.psm1.bak
